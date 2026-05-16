@@ -11,7 +11,7 @@ const PORT = Number(process.env.PORT || 4000);
 
 const PROJECT_ROOT = __dirname;
 const PUBLIC_DIR = PROJECT_ROOT;
-const DB_FILE = path.join(PROJECT_ROOT, 'complaints.db');
+const DB_FILE = process.env.DB_FILE || path.join(PROJECT_ROOT, 'complaints.db');
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -149,6 +149,23 @@ app.get('/download-db', (req, res) => {
   res.download(DB_FILE, 'complaints.db');
 });
 
+app.get('/db-data', asyncHandler(async (req, res) => {
+  const complaints = await all('SELECT * FROM complaints ORDER BY id DESC');
+  const users = await all('SELECT id, username, password, role, created_at FROM users ORDER BY id DESC');
+  const amc = await all('SELECT * FROM amc ORDER BY id DESC');
+  const clients = await all('SELECT * FROM client_master ORDER BY name ASC');
+  const suggestions = await all('SELECT * FROM suggestion_master ORDER BY type, value');
+
+  res.json({
+    database: DB_FILE,
+    complaints,
+    users,
+    amc,
+    clients,
+    suggestions
+  });
+}));
+
 app.post('/login', asyncHandler(async (req, res) => {
   const { username, password } = req.body || {};
 
@@ -222,7 +239,7 @@ app.get('/complaints', asyncHandler(async (req, res) => {
 
 app.post('/complaints', asyncHandler(async (req, res) => {
   const c = req.body || {};
-  const ticketNo = `CT-${Date.now()}`;
+  const ticketNo = c.ticketNo || `CT-${Date.now()}`;
   const closedAt = c.status === 'Closed' ? new Date().toISOString() : null;
 
   const result = await run(
