@@ -48,10 +48,7 @@ const transporter = nodemailer.createTransport({
   secure: String(process.env.EMAIL_SECURE || 'false') === 'true',
   auth:
     process.env.EMAIL_USER && process.env.EMAIL_PASS
-      ? {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        }
+      ? { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
       : undefined
 });
 
@@ -78,6 +75,21 @@ async function initDb() {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'Viewer',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS amc (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clientName TEXT,
+      type TEXT,
+      start TEXT,
+      end TEXT,
+      amount TEXT,
+      renewalAmount TEXT,
+      assigned TEXT,
+      note TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -128,7 +140,6 @@ app.get('/users', asyncHandler(async (req, res) => {
   const rows = await all(
     'SELECT id, username, password, role, created_at FROM users ORDER BY id DESC'
   );
-
   res.json(rows);
 }));
 
@@ -155,13 +166,6 @@ app.post('/users', asyncHandler(async (req, res) => {
 
 app.put('/users/:id', asyncHandler(async (req, res) => {
   const { username, password, role } = req.body || {};
-
-  if (!username || !password) {
-    return res.status(400).json({
-      success: false,
-      message: 'Username and password required'
-    });
-  }
 
   await run(
     'UPDATE users SET username = ?, password = ?, role = ? WHERE id = ?',
@@ -204,7 +208,7 @@ app.post('/complaints', asyncHandler(async (req, res) => {
     [
       ticketNo,
       c.clientName || '',
-      c.mobile || '',
+      c.mobile || c.mobileNo || '',
       c.email || '',
       c.issueType || '',
       c.issueDetails || '',
@@ -218,6 +222,127 @@ app.post('/complaints', asyncHandler(async (req, res) => {
     success: true,
     id: result.id,
     ticketNo
+  });
+}));
+
+app.put('/complaints/:id', asyncHandler(async (req, res) => {
+  const c = req.body || {};
+
+  await run(
+    `
+    UPDATE complaints SET
+      clientName = ?,
+      mobile = ?,
+      email = ?,
+      issueType = ?,
+      issueDetails = ?,
+      assignedTo = ?,
+      status = ?,
+      priority = ?
+    WHERE id = ?
+    `,
+    [
+      c.clientName || '',
+      c.mobile || c.mobileNo || '',
+      c.email || '',
+      c.issueType || '',
+      c.issueDetails || '',
+      c.assignedTo || '',
+      c.status || 'Open',
+      c.priority || 'Medium',
+      req.params.id
+    ]
+  );
+
+  res.json({
+    success: true,
+    message: 'Complaint updated'
+  });
+}));
+
+app.delete('/complaints/:id', asyncHandler(async (req, res) => {
+  await run('DELETE FROM complaints WHERE id = ?', [req.params.id]);
+
+  res.json({
+    success: true,
+    message: 'Complaint deleted'
+  });
+}));
+
+app.get('/amc', asyncHandler(async (req, res) => {
+  const rows = await all('SELECT * FROM amc ORDER BY id DESC');
+  res.json(rows);
+}));
+
+app.post('/amc', asyncHandler(async (req, res) => {
+  const a = req.body || {};
+
+  const result = await run(
+    `
+    INSERT INTO amc
+    (clientName, type, start, end, amount, renewalAmount, assigned, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      a.clientName || '',
+      a.type || '',
+      a.start || '',
+      a.end || '',
+      a.amount || '',
+      a.renewalAmount || '',
+      a.assigned || '',
+      a.note || ''
+    ]
+  );
+
+  res.json({
+    success: true,
+    id: result.id,
+    message: 'AMC created'
+  });
+}));
+
+app.put('/amc/:id', asyncHandler(async (req, res) => {
+  const a = req.body || {};
+
+  await run(
+    `
+    UPDATE amc SET
+      clientName = ?,
+      type = ?,
+      start = ?,
+      end = ?,
+      amount = ?,
+      renewalAmount = ?,
+      assigned = ?,
+      note = ?
+    WHERE id = ?
+    `,
+    [
+      a.clientName || '',
+      a.type || '',
+      a.start || '',
+      a.end || '',
+      a.amount || '',
+      a.renewalAmount || '',
+      a.assigned || '',
+      a.note || '',
+      req.params.id
+    ]
+  );
+
+  res.json({
+    success: true,
+    message: 'AMC updated'
+  });
+}));
+
+app.delete('/amc/:id', asyncHandler(async (req, res) => {
+  await run('DELETE FROM amc WHERE id = ?', [req.params.id]);
+
+  res.json({
+    success: true,
+    message: 'AMC deleted'
   });
 }));
 
