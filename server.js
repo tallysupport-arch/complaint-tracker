@@ -60,11 +60,20 @@ async function initDb() {
       clientName TEXT,
       mobile TEXT,
       email TEXT,
+      address TEXT,
       issueType TEXT,
       issueDetails TEXT,
       assignedTo TEXT,
       status TEXT,
       priority TEXT,
+      slaDue TEXT,
+      followupDate TEXT,
+      escalationLevel TEXT,
+      escalatedTo TEXT,
+      escalationRemarks TEXT,
+      remarks TEXT,
+      internalNotes TEXT,
+      closed_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -91,6 +100,27 @@ async function initDb() {
       assigned TEXT,
       note TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS client_master (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      mobile TEXT,
+      email TEXT,
+      address TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS suggestion_master (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      value TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(type, value)
     )
   `);
 
@@ -198,23 +228,33 @@ app.get('/complaints', asyncHandler(async (req, res) => {
 app.post('/complaints', asyncHandler(async (req, res) => {
   const c = req.body || {};
   const ticketNo = `CT-${Date.now()}`;
+  const closedAt = c.status === 'Closed' ? new Date().toISOString() : null;
 
   const result = await run(
     `
     INSERT INTO complaints
-    (ticketNo, clientName, mobile, email, issueType, issueDetails, assignedTo, status, priority)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (ticketNo, clientName, mobile, email, address, issueType, issueDetails, assignedTo, status, priority, slaDue, followupDate, escalationLevel, escalatedTo, escalationRemarks, remarks, internalNotes, closed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       ticketNo,
       c.clientName || '',
       c.mobile || c.mobileNo || '',
       c.email || '',
+      c.address || '',
       c.issueType || '',
       c.issueDetails || '',
       c.assignedTo || '',
       c.status || 'Open',
-      c.priority || 'Medium'
+      c.priority || 'Medium',
+      c.slaDue || '',
+      c.followupDate || '',
+      c.escalationLevel || '',
+      c.escalatedTo || '',
+      c.escalationRemarks || '',
+      c.remarks || '',
+      c.internalNotes || '',
+      closedAt
     ]
   );
 
@@ -227,6 +267,7 @@ app.post('/complaints', asyncHandler(async (req, res) => {
 
 app.put('/complaints/:id', asyncHandler(async (req, res) => {
   const c = req.body || {};
+  const closedAt = c.status === 'Closed' ? new Date().toISOString() : null;
 
   await run(
     `
@@ -234,22 +275,40 @@ app.put('/complaints/:id', asyncHandler(async (req, res) => {
       clientName = ?,
       mobile = ?,
       email = ?,
+      address = ?,
       issueType = ?,
       issueDetails = ?,
       assignedTo = ?,
       status = ?,
-      priority = ?
+      priority = ?,
+      slaDue = ?,
+      followupDate = ?,
+      escalationLevel = ?,
+      escalatedTo = ?,
+      escalationRemarks = ?,
+      remarks = ?,
+      internalNotes = ?,
+      closed_at = ?
     WHERE id = ?
     `,
     [
       c.clientName || '',
       c.mobile || c.mobileNo || '',
       c.email || '',
+      c.address || '',
       c.issueType || '',
       c.issueDetails || '',
       c.assignedTo || '',
       c.status || 'Open',
       c.priority || 'Medium',
+      c.slaDue || '',
+      c.followupDate || '',
+      c.escalationLevel || '',
+      c.escalatedTo || '',
+      c.escalationRemarks || '',
+      c.remarks || '',
+      c.internalNotes || '',
+      closedAt,
       req.params.id
     ]
   );
@@ -343,6 +402,182 @@ app.delete('/amc/:id', asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'AMC deleted'
+  });
+}));
+
+app.get('/client-master', asyncHandler(async (req, res) => {
+  const rows = await all('SELECT * FROM client_master ORDER BY name ASC');
+  res.json(rows);
+}));
+
+app.post('/client-master', asyncHandler(async (req, res) => {
+  const { name, mobile, email, address } = req.body || {};
+
+  if (!name) {
+    return res.status(400).json({
+      success: false,
+      message: 'Client name required'
+    });
+  }
+
+  await run(
+    'INSERT OR IGNORE INTO client_master (name, mobile, email, address) VALUES (?, ?, ?, ?)',
+    [name, mobile || '', email || '', address || '']
+  );
+
+  res.json({
+    success: true,
+    message: 'Client created'
+  });
+}));
+
+app.put('/client-master/:id', asyncHandler(async (req, res) => {
+  const { name, mobile, email, address } = req.body || {};
+
+  await run(
+    'UPDATE client_master SET name = ?, mobile = ?, email = ?, address = ? WHERE id = ?',
+    [name || '', mobile || '', email || '', address || '', req.params.id]
+  );
+
+  res.json({
+    success: true,
+    message: 'Client updated'
+  });
+}));
+
+app.delete('/client-master/:id', asyncHandler(async (req, res) => {
+  await run('DELETE FROM client_master WHERE id = ?', [req.params.id]);
+
+  res.json({
+    success: true,
+    message: 'Client deleted'
+  });
+}));
+
+app.post('/import/client-master', asyncHandler(async (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+  let count = 0;
+
+  for (const r of rows) {
+    const name =
+      r['Client Name'] ||
+      r['Name'] ||
+      r.name ||
+      r.clientName ||
+      '';
+
+    if (!name) continue;
+
+    await run(
+      'INSERT OR IGNORE INTO client_master (name, mobile, email, address) VALUES (?, ?, ?, ?)',
+      [
+        name,
+        r['Mobile'] || r['Mobile No'] || r['Mobile No.'] || r.mobile || '',
+        r['Email'] || r.email || '',
+        r['Address'] || r.address || ''
+      ]
+    );
+
+    count++;
+  }
+
+  res.json({
+    success: true,
+    imported: count,
+    message: `${count} clients imported`
+  });
+}));
+
+app.get('/suggestion-master', asyncHandler(async (req, res) => {
+  const rows = await all('SELECT * FROM suggestion_master ORDER BY type, value');
+  res.json(rows);
+}));
+
+app.post('/suggestion-master', asyncHandler(async (req, res) => {
+  const { type, value } = req.body || {};
+
+  if (!type || !value) {
+    return res.status(400).json({
+      success: false,
+      message: 'Type and value required'
+    });
+  }
+
+  await run(
+    'INSERT OR IGNORE INTO suggestion_master (type, value) VALUES (?, ?)',
+    [type, value]
+  );
+
+  res.json({
+    success: true,
+    message: 'Suggestion created'
+  });
+}));
+
+app.put('/suggestion-master/:id', asyncHandler(async (req, res) => {
+  const { type, value } = req.body || {};
+
+  await run(
+    'UPDATE suggestion_master SET type = ?, value = ? WHERE id = ?',
+    [type || '', value || '', req.params.id]
+  );
+
+  res.json({
+    success: true,
+    message: 'Suggestion updated'
+  });
+}));
+
+app.delete('/suggestion-master/:id', asyncHandler(async (req, res) => {
+  await run('DELETE FROM suggestion_master WHERE id = ?', [req.params.id]);
+
+  res.json({
+    success: true,
+    message: 'Suggestion deleted'
+  });
+}));
+
+app.post('/import/complaints', asyncHandler(async (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+  let count = 0;
+
+  for (const r of rows) {
+    const ticketNo = r['Ticket No'] || r.ticketNo || `CT-${Date.now()}-${count}`;
+
+    await run(
+      `
+      INSERT INTO complaints
+      (ticketNo, clientName, mobile, email, address, issueType, issueDetails, assignedTo, status, priority, slaDue, followupDate, escalationLevel, escalatedTo, escalationRemarks, remarks, internalNotes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        ticketNo,
+        r['Client Name'] || r.clientName || '',
+        r['Mobile'] || r['Mobile No'] || r['Mobile No.'] || r.mobile || '',
+        r['Email'] || r.email || '',
+        r['Address'] || r.address || '',
+        r['Issue Type'] || r.issueType || '',
+        r['Issue Details'] || r.issueDetails || '',
+        r['Assigned To'] || r.assignedTo || '',
+        r['Status'] || r.status || 'Open',
+        r['Priority'] || r.priority || 'Medium',
+        r['SLA Due'] || r.slaDue || '',
+        r['Follow-up Date'] || r.followupDate || '',
+        r['Escalation Level'] || r.escalationLevel || '',
+        r['Escalated To'] || r.escalatedTo || '',
+        r['Escalation Remarks'] || r.escalationRemarks || '',
+        r['Remarks'] || r.remarks || '',
+        r['Internal Notes'] || r.internalNotes || ''
+      ]
+    );
+
+    count++;
+  }
+
+  res.json({
+    success: true,
+    imported: count,
+    message: `${count} complaints imported`
   });
 }));
 
