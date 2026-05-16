@@ -72,6 +72,22 @@ async function initDb() {
     )
   `);
 
+  await run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'Viewer',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await run(`
+    INSERT OR IGNORE INTO users 
+    (id, username, password, role)
+    VALUES (1, 'admin', '1234', 'Admin')
+  `);
+
   console.log('Database Initialized');
 }
 
@@ -90,19 +106,83 @@ app.get('/health', asyncHandler(async (req, res) => {
 app.post('/login', asyncHandler(async (req, res) => {
   const { username, password } = req.body || {};
 
-  if (username === 'admin' && password === '1234') {
+  const rows = await all(
+    'SELECT id, username, role FROM users WHERE username = ? AND password = ?',
+    [username, password]
+  );
+
+  if (rows.length > 0) {
     return res.json({
       success: true,
-      user: {
-        username: 'admin',
-        role: 'Admin'
-      }
+      user: rows[0]
     });
   }
 
   res.json({
     success: false,
     message: 'Invalid Login'
+  });
+}));
+
+app.get('/users', asyncHandler(async (req, res) => {
+  const rows = await all(
+    'SELECT id, username, password, role, created_at FROM users ORDER BY id DESC'
+  );
+
+  res.json(rows);
+}));
+
+app.post('/users', asyncHandler(async (req, res) => {
+  const { username, password, role } = req.body || {};
+
+  if (!username || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Username and password required'
+    });
+  }
+
+  await run(
+    'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+    [username, password, role || 'Viewer']
+  );
+
+  res.json({
+    success: true,
+    message: 'User created'
+  });
+}));
+
+app.put('/users/:id', asyncHandler(async (req, res) => {
+  const { username, password, role } = req.body || {};
+
+  if (!username || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Username and password required'
+    });
+  }
+
+  await run(
+    'UPDATE users SET username = ?, password = ?, role = ? WHERE id = ?',
+    [username, password, role || 'Viewer', req.params.id]
+  );
+
+  res.json({
+    success: true,
+    message: 'User updated'
+  });
+}));
+
+app.delete('/users/:id', asyncHandler(async (req, res) => {
+  await run(
+    'DELETE FROM users WHERE id = ? AND username <> ?',
+    [req.params.id, 'admin']
+  );
+
+  res.json({
+    success: true,
+    message: 'User deleted'
   });
 }));
 
