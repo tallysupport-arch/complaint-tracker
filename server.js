@@ -145,6 +145,10 @@ app.get('/health', asyncHandler(async (req, res) => {
   });
 }));
 
+app.get('/download-db', (req, res) => {
+  res.download(DB_FILE, 'complaints.db');
+});
+
 app.post('/login', asyncHandler(async (req, res) => {
   const { username, password } = req.body || {};
 
@@ -188,10 +192,7 @@ app.post('/users', asyncHandler(async (req, res) => {
     [username, password, role || 'Viewer']
   );
 
-  res.json({
-    success: true,
-    message: 'User created'
-  });
+  res.json({ success: true, message: 'User created' });
 }));
 
 app.put('/users/:id', asyncHandler(async (req, res) => {
@@ -202,10 +203,7 @@ app.put('/users/:id', asyncHandler(async (req, res) => {
     [username, password, role || 'Viewer', req.params.id]
   );
 
-  res.json({
-    success: true,
-    message: 'User updated'
-  });
+  res.json({ success: true, message: 'User updated' });
 }));
 
 app.delete('/users/:id', asyncHandler(async (req, res) => {
@@ -214,10 +212,7 @@ app.delete('/users/:id', asyncHandler(async (req, res) => {
     [req.params.id, 'admin']
   );
 
-  res.json({
-    success: true,
-    message: 'User deleted'
-  });
+  res.json({ success: true, message: 'User deleted' });
 }));
 
 app.get('/complaints', asyncHandler(async (req, res) => {
@@ -258,11 +253,7 @@ app.post('/complaints', asyncHandler(async (req, res) => {
     ]
   );
 
-  res.json({
-    success: true,
-    id: result.id,
-    ticketNo
-  });
+  res.json({ success: true, id: result.id, ticketNo });
 }));
 
 app.put('/complaints/:id', asyncHandler(async (req, res) => {
@@ -313,19 +304,12 @@ app.put('/complaints/:id', asyncHandler(async (req, res) => {
     ]
   );
 
-  res.json({
-    success: true,
-    message: 'Complaint updated'
-  });
+  res.json({ success: true, message: 'Complaint updated' });
 }));
 
 app.delete('/complaints/:id', asyncHandler(async (req, res) => {
   await run('DELETE FROM complaints WHERE id = ?', [req.params.id]);
-
-  res.json({
-    success: true,
-    message: 'Complaint deleted'
-  });
+  res.json({ success: true, message: 'Complaint deleted' });
 }));
 
 app.get('/amc', asyncHandler(async (req, res) => {
@@ -354,11 +338,7 @@ app.post('/amc', asyncHandler(async (req, res) => {
     ]
   );
 
-  res.json({
-    success: true,
-    id: result.id,
-    message: 'AMC created'
-  });
+  res.json({ success: true, id: result.id, message: 'AMC created' });
 }));
 
 app.put('/amc/:id', asyncHandler(async (req, res) => {
@@ -390,19 +370,12 @@ app.put('/amc/:id', asyncHandler(async (req, res) => {
     ]
   );
 
-  res.json({
-    success: true,
-    message: 'AMC updated'
-  });
+  res.json({ success: true, message: 'AMC updated' });
 }));
 
 app.delete('/amc/:id', asyncHandler(async (req, res) => {
   await run('DELETE FROM amc WHERE id = ?', [req.params.id]);
-
-  res.json({
-    success: true,
-    message: 'AMC deleted'
-  });
+  res.json({ success: true, message: 'AMC deleted' });
 }));
 
 app.get('/client-master', asyncHandler(async (req, res) => {
@@ -425,10 +398,7 @@ app.post('/client-master', asyncHandler(async (req, res) => {
     [name, mobile || '', email || '', address || '']
   );
 
-  res.json({
-    success: true,
-    message: 'Client created'
-  });
+  res.json({ success: true, message: 'Client created' });
 }));
 
 app.put('/client-master/:id', asyncHandler(async (req, res) => {
@@ -439,19 +409,12 @@ app.put('/client-master/:id', asyncHandler(async (req, res) => {
     [name || '', mobile || '', email || '', address || '', req.params.id]
   );
 
-  res.json({
-    success: true,
-    message: 'Client updated'
-  });
+  res.json({ success: true, message: 'Client updated' });
 }));
 
 app.delete('/client-master/:id', asyncHandler(async (req, res) => {
   await run('DELETE FROM client_master WHERE id = ?', [req.params.id]);
-
-  res.json({
-    success: true,
-    message: 'Client deleted'
-  });
+  res.json({ success: true, message: 'Client deleted' });
 }));
 
 app.post('/import/client-master', asyncHandler(async (req, res) => {
@@ -459,13 +422,7 @@ app.post('/import/client-master', asyncHandler(async (req, res) => {
   let count = 0;
 
   for (const r of rows) {
-    const name =
-      r['Client Name'] ||
-      r['Name'] ||
-      r.name ||
-      r.clientName ||
-      '';
-
+    const name = r['Client Name'] || r['Name'] || r.name || r.clientName || '';
     if (!name) continue;
 
     await run(
@@ -508,10 +465,7 @@ app.post('/suggestion-master', asyncHandler(async (req, res) => {
     [type, value]
   );
 
-  res.json({
-    success: true,
-    message: 'Suggestion created'
-  });
+  res.json({ success: true, message: 'Suggestion created' });
 }));
 
 app.put('/suggestion-master/:id', asyncHandler(async (req, res) => {
@@ -522,19 +476,12 @@ app.put('/suggestion-master/:id', asyncHandler(async (req, res) => {
     [type || '', value || '', req.params.id]
   );
 
-  res.json({
-    success: true,
-    message: 'Suggestion updated'
-  });
+  res.json({ success: true, message: 'Suggestion updated' });
 }));
 
 app.delete('/suggestion-master/:id', asyncHandler(async (req, res) => {
   await run('DELETE FROM suggestion_master WHERE id = ?', [req.params.id]);
-
-  res.json({
-    success: true,
-    message: 'Suggestion deleted'
-  });
+  res.json({ success: true, message: 'Suggestion deleted' });
 }));
 
 app.post('/import/complaints', asyncHandler(async (req, res) => {
