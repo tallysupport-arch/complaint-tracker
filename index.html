@@ -982,8 +982,17 @@ async function api(path, options={}){
 }
 
 async function refreshDataAndUI(){
+  const activeSectionId = document.querySelector('.section.active')?.id || 'dashboardSection';
   await loadData();
   renderAll();
+  if(document.getElementById(activeSectionId)){
+    switchSection(activeSectionId);
+  }
+}
+
+async function afterSuccessfulChange(message){
+  await refreshDataAndUI();
+  if(message) toast(message);
 }
 
 function normalizeComplaintRow(r){
@@ -1347,18 +1356,18 @@ function renderUsersSection(){
     function resetUserForm(){ userEditId = null; document.getElementById('userModalTitle').textContent='Add User'; document.getElementById('uUsername').value=''; document.getElementById('uPassword').value=''; document.getElementById('uRole').value='Engineer'; }
 
     
-async function saveClientMaster(){ const data={name:document.getElementById('mClientName').value.trim(), mobile:document.getElementById('mClientMobile').value.trim(), email:document.getElementById('mClientEmail').value.trim(), address:document.getElementById('mClientAddress').value.trim()}; if(!data.name){ alert('Client name required'); return; } try{ if(clientMasterEditId) await api(`/client-master/${clientMasterEditId}`, { method:'PUT', body: JSON.stringify(data) }); else await api('/client-master', { method:'POST', body: JSON.stringify(data) }); await refreshDataAndUI(); closeClientMasterModal(); resetClientMasterForm(); toast('Client master saved'); }catch(err){ alert(err.message || 'Client save failed'); } }
+async function saveClientMaster(){ const data={name:document.getElementById('mClientName').value.trim(), mobile:document.getElementById('mClientMobile').value.trim(), email:document.getElementById('mClientEmail').value.trim(), address:document.getElementById('mClientAddress').value.trim()}; if(!data.name){ alert('Client name required'); return; } try{ if(clientMasterEditId) await api(`/client-master/${clientMasterEditId}`, { method:'PUT', body: JSON.stringify(data) }); else await api('/client-master', { method:'POST', body: JSON.stringify(data) }); closeClientMasterModal(); resetClientMasterForm(); await afterSuccessfulChange('Client master saved'); }catch(err){ alert(err.message || 'Client save failed'); } }
     
-async function saveSuggestion(){ const editId=document.getElementById('sValue').dataset.editId || ''; const item={type:document.getElementById('sType').value, value:document.getElementById('sValue').value.trim()}; if(!item.value){ alert('Value required'); return; } try{ if(editId) await api(`/suggestion-master/${editId}`, { method:'PUT', body: JSON.stringify(item) }); else await api('/suggestion-master', { method:'POST', body: JSON.stringify(item) }); await refreshDataAndUI(); closeSuggestionModal(); resetSuggestionForm(); toast('Suggestion saved'); }catch(err){ alert(err.message || 'Suggestion save failed'); } }
+async function saveSuggestion(){ const editId=document.getElementById('sValue').dataset.editId || ''; const item={type:document.getElementById('sType').value, value:document.getElementById('sValue').value.trim()}; if(!item.value){ alert('Value required'); return; } try{ if(editId) await api(`/suggestion-master/${editId}`, { method:'PUT', body: JSON.stringify(item) }); else await api('/suggestion-master', { method:'POST', body: JSON.stringify(item) }); closeSuggestionModal(); resetSuggestionForm(); await afterSuccessfulChange('Suggestion saved'); }catch(err){ alert(err.message || 'Suggestion save failed'); } }
     
-async function saveUser(){ const data={username:document.getElementById('uUsername').value.trim(), password:document.getElementById('uPassword').value.trim(), role:document.getElementById('uRole').value}; if(!data.username || !data.password){ alert('Username and password required'); return; } try{ if(userEditId) await api(`/users/${userEditId}`, { method:'PUT', body: JSON.stringify(data) }); else await api('/users', { method:'POST', body: JSON.stringify(data) }); await refreshDataAndUI(); closeUserModal(); resetUserForm(); toast('User saved'); }catch(err){ alert(err.message || 'User save failed'); } }
+async function saveUser(){ const data={username:document.getElementById('uUsername').value.trim(), password:document.getElementById('uPassword').value.trim(), role:document.getElementById('uRole').value}; if(!data.username || !data.password){ alert('Username and password required'); return; } try{ if(userEditId) await api(`/users/${userEditId}`, { method:'PUT', body: JSON.stringify(data) }); else await api('/users', { method:'POST', body: JSON.stringify(data) }); closeUserModal(); resetUserForm(); await afterSuccessfulChange('User saved'); }catch(err){ alert(err.message || 'User save failed'); } }
 
     window.editClientMaster = function(id){ const c = clientMaster.find(x=>x.id===id); if(!c) return; clientMasterEditId=id; document.getElementById('clientMasterModalTitle').textContent='Edit Client Master'; document.getElementById('mClientName').value=c.name||''; document.getElementById('mClientMobile').value=c.mobile||''; document.getElementById('mClientEmail').value=c.email||''; document.getElementById('mClientAddress').value=c.address||''; openClientMasterModal(); }
-    window.deleteClientMaster = async function(id){ const c = clientMaster.find(x=>x.id===id); if(!c) return; if(!confirm(`Delete client master for ${c.name}?`)) return; try{ await api(`/client-master/${id}`, { method:'DELETE' }); await refreshDataAndUI(); toast('Client master deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
+    window.deleteClientMaster = async function(id){ const c = clientMaster.find(x=>x.id===id); if(!c) return; if(!confirm(`Delete client master for ${c.name}?`)) return; try{ await api(`/client-master/${id}`, { method:'DELETE' }); await afterSuccessfulChange('Client master deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
     window.editSuggestion = function(id){ const s = suggestionMaster.find(x=>x.id===id); if(!s) return; document.getElementById('suggestionModalTitle').textContent='Edit Suggestion'; document.getElementById('sType').value=s.type; document.getElementById('sValue').value=s.value; document.getElementById('sValue').dataset.editId=s.id; openSuggestionModal(); }
-    window.deleteSuggestion = async function(id){ const s=suggestionMaster.find(x=>x.id===id); if(!s) return; if(!confirm(`Delete suggestion ${s.value}?`)) return; try{ await api(`/suggestion-master/${id}`, { method:'DELETE' }); await refreshDataAndUI(); toast('Suggestion deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
+    window.deleteSuggestion = async function(id){ const s=suggestionMaster.find(x=>x.id===id); if(!s) return; if(!confirm(`Delete suggestion ${s.value}?`)) return; try{ await api(`/suggestion-master/${id}`, { method:'DELETE' }); await afterSuccessfulChange('Suggestion deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
     window.editUser = function(id){ const u = users.find(x=>x.id===id); if(!u) return; userEditId=id; document.getElementById('userModalTitle').textContent='Edit User'; document.getElementById('uUsername').value=u.username; document.getElementById('uPassword').value=u.password; document.getElementById('uRole').value=u.role; openUserModal(); }
-    window.deleteUser = async function(id){ const u=users.find(x=>x.id===id); if(!u) return; if(u.username==='admin'){ alert('Default admin is protected'); return; } if(!confirm(`Delete user ${u.username}?`)) return; try{ await api(`/users/${id}`, { method:'DELETE' }); await refreshDataAndUI(); toast('User deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
+    window.deleteUser = async function(id){ const u=users.find(x=>x.id===id); if(!u) return; if(u.username==='admin'){ alert('Default admin is protected'); return; } if(!confirm(`Delete user ${u.username}?`)) return; try{ await api(`/users/${id}`, { method:'DELETE' }); await afterSuccessfulChange('User deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
 
     function fillComplaintFromClientMaster(name){ const c = clientMaster.find(x=>x.name.toLowerCase()===String(name||'').trim().toLowerCase()); if(!c) return; if(!document.getElementById('fMobileNo').value) document.getElementById('fMobileNo').value=c.mobile||''; if(!document.getElementById('fEmail').value) document.getElementById('fEmail').value=c.email||''; if(!document.getElementById('fAddress').value) document.getElementById('fAddress').value=c.address||''; }
 
@@ -1390,10 +1399,10 @@ async function saveUser(){ const data={username:document.getElementById('uUserna
     }
 
     
-async function handleExcelImport(file){ if(!file) return; const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:'array'}); const sheet=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(sheet,{defval:''}); try{ const out=await api('/import/complaints',{ method:'POST', body: JSON.stringify({ rows }) }); await refreshDataAndUI(); closeImportChoiceModal(); alert(`Complaint import completed. Imported: ${out.imported || 0}`); }catch(err){ alert(err.message || 'Complaint import failed'); } }
+async function handleExcelImport(file){ if(!file) return; const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:'array'}); const sheet=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(sheet,{defval:''}); try{ const out=await api('/import/complaints',{ method:'POST', body: JSON.stringify({ rows }) }); closeImportChoiceModal(); await afterSuccessfulChange(`Complaint import completed. Imported: ${out.imported || 0}`); }catch(err){ alert(err.message || 'Complaint import failed'); } }
 
     
-async function handleClientMasterImport(file){ if(!file) return; const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:'array'}); const sheet=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(sheet,{defval:''}); try{ const out=await api('/import/client-master',{ method:'POST', body: JSON.stringify({ rows }) }); await refreshDataAndUI(); closeImportChoiceModal(); alert(`Client master import completed. Imported: ${out.imported || 0}`); }catch(err){ alert(err.message || 'Client master import failed'); } }
+async function handleClientMasterImport(file){ if(!file) return; const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:'array'}); const sheet=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(sheet,{defval:''}); try{ const out=await api('/import/client-master',{ method:'POST', body: JSON.stringify({ rows }) }); closeImportChoiceModal(); await afterSuccessfulChange(`Client master import completed. Imported: ${out.imported || 0}`); }catch(err){ alert(err.message || 'Client master import failed'); } }
     
     function exportExcel(){ if(typeof XLSX==='undefined'){ alert('Excel library not loaded. Please use internet/CDN access.'); return; } const rows = filterComplaints().map(x=>({Ticket:x.ticket,'Client Name':x.clientName,Mobile:x.mobileNo,Email:x.email,Address:x.address,'Issue Type':x.issueType,'Issue Details':x.issueDetails,'Assigned To':x.assignedTo,Status:x.status,Priority:x.priority,'SLA Status':getSlaStatus(x),'SLA Due':x.slaDue?fmtDateTime(x.slaDue):'',Created:fmtDateTime(x.createdAt),Closed:x.closedAt?fmtDateTime(x.closedAt):'','Follow-up':x.followupDate,'Escalation Level':x.escalationLevel,'Escalated To':x.escalatedTo,Remarks:x.remarks,'Internal Notes':x.internalNotes})); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Complaints'); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientMaster.map(x=>({Name:x.name,Mobile:x.mobile,Email:x.email,Address:x.address}))), 'Client Master'); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(users.map(x=>({Username:x.username,Role:x.role,Created:x.createdAt}))), 'Users'); XLSX.writeFile(wb,'complaint_tracker_advanced_export.xlsx'); }
 
@@ -1556,11 +1565,60 @@ async function sendComplaintEmail(item, mode='manual'){
 
     
 async function saveComplaint(){
-  const data=Object.fromEntries(Object.entries(fieldMap).map(([key,id])=>[key, document.getElementById(id).value.trim()]));
-  if(!data.clientName || !data.issueType || !data.issueDetails){ alert('Client name, issue type and issue details are required.'); return; }
-  const masterEmail=getClientMasterEmailByName(data.clientName); if(masterEmail) data.email=masterEmail;
-  const payload={ clientName:data.clientName, mobile:data.mobileNo, email:data.email, address:data.address, issueType:data.issueType, issueDetails:data.issueDetails, assignedTo:data.assignedTo, status:data.status || 'Open', priority:data.priority || 'Medium', slaDue:data.slaDue ? new Date(data.slaDue).toISOString() : '', followupDate:data.followupDate || '', escalationLevel:data.escalationLevel || '', escalatedTo:data.escalatedTo || '', escalationRemarks:data.escalationRemarks || '', remarks:data.remarks || '', internalNotes:data.internalNotes || '' };
-  try{ let savedId=complaintEditId; if(complaintEditId) await api(`/complaints/${complaintEditId}`, { method:'PUT', body: JSON.stringify(payload) }); else { const out=await api('/complaints', { method:'POST', body: JSON.stringify(payload) }); savedId=String(out.id); } await refreshDataAndUI(); closeComplaintModal(); resetComplaintForm(); toast('Complaint saved'); if(!complaintEditId){ const created=complaints.find(x=>x.id===String(savedId)); if(created) await askAndSendComplaintEmail(created); } }catch(err){ alert(err.message || 'Complaint save failed'); }
+  const data = Object.fromEntries(
+    Object.entries(fieldMap).map(([key, id]) => [key, document.getElementById(id).value.trim()])
+  );
+
+  if(!data.clientName || !data.issueType || !data.issueDetails){
+    alert('Client name, issue type and issue details are required.');
+    return;
+  }
+
+  const masterEmail = getClientMasterEmailByName(data.clientName);
+  if(masterEmail) data.email = masterEmail;
+
+  const payload = {
+    clientName: data.clientName,
+    mobile: data.mobileNo,
+    mobileNo: data.mobileNo,
+    email: data.email,
+    address: data.address,
+    issueType: data.issueType,
+    issueDetails: data.issueDetails,
+    assignedTo: data.assignedTo,
+    status: data.status || 'Open',
+    priority: data.priority || 'Medium',
+    slaDue: data.slaDue ? new Date(data.slaDue).toISOString() : '',
+    followupDate: data.followupDate || '',
+    escalationLevel: data.escalationLevel || '',
+    escalatedTo: data.escalatedTo || '',
+    escalationRemarks: data.escalationRemarks || '',
+    remarks: data.remarks || '',
+    internalNotes: data.internalNotes || ''
+  };
+
+  const isEdit = Boolean(complaintEditId);
+  let savedId = complaintEditId;
+
+  try{
+    if(isEdit){
+      await api(`/complaints/${complaintEditId}`, { method:'PUT', body: JSON.stringify(payload) });
+    }else{
+      const out = await api('/complaints', { method:'POST', body: JSON.stringify(payload) });
+      savedId = String(out.id || '');
+    }
+
+    closeComplaintModal();
+    resetComplaintForm();
+    await afterSuccessfulChange(isEdit ? 'Complaint updated' : 'Complaint saved');
+
+    if(!isEdit && savedId){
+      const created = complaints.find(x => String(x.id) === String(savedId));
+      if(created) await askAndSendComplaintEmail(created);
+    }
+  }catch(err){
+    alert(err.message || 'Complaint save failed');
+  }
 }
 
 window.editComplaint = function(id){
@@ -1659,9 +1717,7 @@ window.changeComplaintStatus = async function(id, newStatus){
             history:item.history
           })
         });
-        await loadData();
-        renderAll();
-        toast(`Status changed to ${newStatus}`);
+        await afterSuccessfulChange(`Status changed to ${newStatus}`);
       }catch(err){
         Object.assign(item, backup);
         renderComplaints();
@@ -1684,7 +1740,7 @@ window.changeComplaintStatus = async function(id, newStatus){
       await sendComplaintEmail(item, 'manual');
     }
 
-    window.deleteComplaint = async function(id){ const item=complaints.find(x=>x.id===id); if(!item) return; if(!confirm(`Delete ${item.ticket}?`)) return; try{ await api(`/complaints/${id}`, { method:'DELETE' }); await refreshDataAndUI(); toast('Complaint deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
+    window.deleteComplaint = async function(id){ const item=complaints.find(x=>x.id===id); if(!item) return; if(!confirm(`Delete ${item.ticket}?`)) return; try{ await api(`/complaints/${id}`, { method:'DELETE' }); await afterSuccessfulChange('Complaint deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
 
     function resetAmcForm(){
       amcEditId = null;
@@ -1694,7 +1750,7 @@ window.changeComplaintStatus = async function(id, newStatus){
     }
 
     
-async function saveAmc(){ const data={ clientName:document.getElementById('aClientName').value.trim(), type:document.getElementById('aType').value, start:document.getElementById('aStart').value, end:document.getElementById('aEnd').value, amount:document.getElementById('aAmount').value, renewalAmount:document.getElementById('aRenewalAmount').value, assigned:document.getElementById('aAssigned').value.trim(), note:document.getElementById('aNote').value.trim() }; if(!data.clientName || !data.start || !data.end){ alert('Client, start date and end date are required.'); return; } try{ if(amcEditId) await api(`/amc/${amcEditId}`, { method:'PUT', body: JSON.stringify(data) }); else await api('/amc', { method:'POST', body: JSON.stringify(data) }); await refreshDataAndUI(); closeAmcModal(); resetAmcForm(); toast('AMC saved'); }catch(err){ alert(err.message || 'AMC save failed'); } }
+async function saveAmc(){ const data={ clientName:document.getElementById('aClientName').value.trim(), type:document.getElementById('aType').value, start:document.getElementById('aStart').value, end:document.getElementById('aEnd').value, amount:document.getElementById('aAmount').value, renewalAmount:document.getElementById('aRenewalAmount').value, assigned:document.getElementById('aAssigned').value.trim(), note:document.getElementById('aNote').value.trim() }; if(!data.clientName || !data.start || !data.end){ alert('Client, start date and end date are required.'); return; } try{ if(amcEditId) await api(`/amc/${amcEditId}`, { method:'PUT', body: JSON.stringify(data) }); else await api('/amc', { method:'POST', body: JSON.stringify(data) }); closeAmcModal(); resetAmcForm(); await afterSuccessfulChange('AMC saved'); }catch(err){ alert(err.message || 'AMC save failed'); } }
 
     window.editAmc = function(id){
       const item = amcs.find(x=>x.id===id); if(!item) return;
@@ -1734,7 +1790,7 @@ async function saveAmc(){ const data={ clientName:document.getElementById('aClie
       }
     }
 
-    window.deleteAmc = async function(id){ const item=amcs.find(x=>x.id===id); if(!item) return; if(!confirm(`Delete AMC for ${item.clientName}?`)) return; try{ await api(`/amc/${id}`, { method:'DELETE' }); await refreshDataAndUI(); toast('AMC deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
+    window.deleteAmc = async function(id){ const item=amcs.find(x=>x.id===id); if(!item) return; if(!confirm(`Delete AMC for ${item.clientName}?`)) return; try{ await api(`/amc/${id}`, { method:'DELETE' }); await afterSuccessfulChange('AMC deleted'); }catch(err){ alert(err.message || 'Delete failed'); } }
 
     function exportCsv(){
       const rows = filterComplaints();
@@ -1816,6 +1872,7 @@ function doLogout(){
 
     function bindEvents(){
       document.getElementById('loginBtn').addEventListener('click', doLogin);
+      document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
       document.getElementById('logoutBtn').addEventListener('click', doLogout);
       document.getElementById('themeBtnLogin').addEventListener('click', toggleTheme);
       document.getElementById('themeBtnSide').addEventListener('click', toggleTheme);
